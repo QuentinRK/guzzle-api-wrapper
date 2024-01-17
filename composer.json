@@ -1,0 +1,22 @@
+{
+    "name": "quentinrankin/guzzle-wrapper-api",
+    "description": "Guzzle wrapper that abstracts tedious configuration & promotes ease of use",
+    "type": "library",
+    "require": {
+        "psr/log": "^3.0",
+        "monolog/monolog": "^3.5",
+        "guzzlehttp/guzzle": "^7.8",
+        "guzzlehttp/psr7": "^2.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "ApiClientWrapper\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Quentin Rankin",
+            "email": "quentin.rankin@kurtgeiger.com"
+        }
+    ]
+}
