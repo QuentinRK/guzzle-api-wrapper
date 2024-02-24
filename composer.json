@@ -2,6 +2,7 @@
     "name": "quentinrk/guzzle-wrapper-api",
     "description": "Guzzle wrapper that abstracts tedious configuration & promotes ease of use",
     "type": "library",
+    "license": "MIT",
     "require": {
         "php": ">=8.0",
         "psr/log": "^3.0",
