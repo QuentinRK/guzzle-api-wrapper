@@ -1,8 +1,9 @@
 {
-    "name": "quentinrankin/guzzle-wrapper-api",
+    "name": "quentinrk/guzzle-wrapper-api",
     "description": "Guzzle wrapper that abstracts tedious configuration & promotes ease of use",
     "type": "library",
     "require": {
+        "php": ">=8.0",
         "psr/log": "^3.0",
         "guzzlehttp/guzzle": "^7.8",
         "guzzlehttp/psr7": "^2.6"
