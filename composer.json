@@ -4,7 +4,6 @@
     "type": "library",
     "require": {
         "psr/log": "^3.0",
-        "monolog/monolog": "^3.5",
         "guzzlehttp/guzzle": "^7.8",
         "guzzlehttp/psr7": "^2.6"
     },
@@ -16,7 +15,7 @@
     "authors": [
         {
             "name": "Quentin Rankin",
-            "email": "quentin.rankin@kurtgeiger.com"
+            "email": "q.rankin@outlook.com"
         }
     ]
 }

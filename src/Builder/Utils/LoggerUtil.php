@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace ApiClientWrapper\Builder\Utils;
 
-use Monolog\Logger;
-use GuzzleHttp\Exception\GuzzleException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\RequestInterface;
 use Psr\Log\LoggerInterface;
@@ -18,9 +16,6 @@ class LoggerUtil
     ) {
     }
 
-    /**
-     * @throws \JsonException
-     */
     public function logRequest(
         string $logName,
         RequestInterface $request,
@@ -55,6 +50,7 @@ class LoggerUtil
                 'message' => $error->getMessage(),
                 'code'    => $error->getCode(),
                 'file'    => $error->getFile(),
+                'class'   => get_class($error),
                 'line'    => $error->getLine(),
             ];
         }

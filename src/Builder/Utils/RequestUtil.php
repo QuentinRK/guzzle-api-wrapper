@@ -6,6 +6,7 @@ namespace ApiClientWrapper\Builder\Utils;
 
 use ApiClientWrapper\Builder\Middleware\RetryPolicy;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\MultipartStream;
 use GuzzleHttp\Psr7\Request;
@@ -18,43 +19,48 @@ class RequestUtil
     public const HTTP_POST = "POST";
     public const HTTP_PUT = "PUT";
     public const HTTP_DELETE = "DELETE";
-    public const FORM_CONTENT_TYPE = 'application/x-www-form-urlencoded';
+    public const CONTENT_TYPE_FORM_ENCODED = 'application/x-www-form-urlencoded';
+    public const CONTENT_TYPE_JSON = 'application/json';
+    public const CONTENT_TYPE_MULTIPART = 'multipart/form-data';
 
-    protected static int $maxRetries;
-    protected static int $maxRetryDelay;
-    protected static string $baseUri;
-    protected static Client $client;
-    protected static ?LoggerInterface $loggerInterface;
+    public string $requestLogName = 'Request & Response';
+
+    protected ?Client $client = null;
 
     public function __construct(
-        string $baseUri,
-        int $maxRetries,
-        int $maxRetryDelay,
-        ?LoggerInterface $loggerInterface,
+        protected string $baseUri,
+        protected int $maxRetries,
+        protected int $maxRetryDelay,
+        protected ?LoggerInterface $logger = null,
     ) {
-        static::$maxRetries      = $maxRetries;
-        static::$maxRetryDelay   = $maxRetryDelay;
-        static::$baseUri         = $baseUri;
-        static::$loggerInterface = $loggerInterface;
     }
 
     /**
-     * @param array<int,mixed> $options
+     * @param string $method
+     * @param string $uri
+     * @param array $headers
+     * @param array $options
      *
-     * @throws \JsonException|\Throwable
+     * @return ResponseInterface
+     * @throws GuzzleException
+     * @throws \JsonException
+     * @throws \Throwable
      */
     public function sendRequest(
         string $method,
         string $uri,
+        array $headers,
         array $options,
-        string $logName = "Request & Response Log",
     ): ResponseInterface {
-        $headers = $options['headers'];
-        $body    = $options['body'];
+        $body = null;
+        if ( ! empty($options['body'])) {
+            $body                    = json_encode($options['body'], JSON_THROW_ON_ERROR);
+            $headers['Content-Type'] = self::CONTENT_TYPE_JSON;
+        }
 
         if ( ! empty($options['form_params'])) {
             $body                    = http_build_query($options['form_params'], "", '&');
-            $headers['Content-Type'] = self::FORM_CONTENT_TYPE;
+            $headers['Content-Type'] = self::CONTENT_TYPE_FORM_ENCODED;
         }
 
         if ( ! empty($options['query'])) {
@@ -62,25 +68,27 @@ class RequestUtil
         }
 
         if ( ! empty($options['multipart'])) {
-            $body = new MultipartStream($options['multipart']);
+            $body                    = new MultipartStream($options['multipart']);
+            $headers['Content-Type'] = self::CONTENT_TYPE_MULTIPART;
         }
 
         $request = new Request(
             method: $method,
             uri: $uri,
             headers: $headers,
-            body: $body ?? null,
+            body: $body
         );
 
-        if (static::$loggerInterface) {
-            $loggerUtil = new LoggerUtil(static::$loggerInterface, static::$baseUri);
+
+        if ($this->logger) {
+            $loggerUtil = new LoggerUtil($this->logger, $this->baseUri);
             try {
                 $response = $this->getClient()->send($request);
-                $loggerUtil->logRequest($logName, $request, $response, $body);
+                $loggerUtil->logRequest($this->requestLogName, $request, $response, $body);
 
                 return $response;
             } catch (\Throwable $e) {
-                $loggerUtil->logRequest($logName, $request, $response ?? null, $body, $e);
+                $loggerUtil->logRequest($this->requestLogName, $request, $response ?? null, $body, $e);
                 throw $e;
             }
         }
@@ -93,20 +101,20 @@ class RequestUtil
      */
     protected function getClient(): Client
     {
-        if (static::$client === null) {
+        if ($this->client === null) {
             $handler = HandlerStack::create();
             $handler->push(
-                RetryPolicy::createRetryPolicy(static::$maxRetries, static::$maxRetryDelay),
+                RetryPolicy::createRetryPolicy($this->maxRetries, $this->maxRetryDelay),
             );
 
-            static::$client = new Client(
+            $this->client = new Client(
                 [
-                    'base_uri' => static::$baseUri,
+                    'base_uri' => $this->baseUri,
                     'handler'  => $handler,
                 ]
             );
         }
 
-        return static::$client;
+        return $this->client;
     }
 }

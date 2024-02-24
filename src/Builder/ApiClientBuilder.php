@@ -7,37 +7,21 @@ namespace ApiClientWrapper\Builder;
 use ApiClientWrapper\Builder\Utils\RequestUtil;
 use GuzzleHttp\Client;
 use Psr\Http\Message\ResponseInterface;
-use Psr\Log\LoggerInterface;
 
 class ApiClientBuilder
 {
-    public const HTTP_GET = "GET";
-    public const HTTP_POST = "POST";
-    public const HTTP_PUT = "PUT";
-    public const HTTP_DELETE = "DELETE";
     protected string $body;
     protected static ?Client $client = null;
-    protected static array $defaultHeaders;
     protected static array $routes;
-    protected RequestUtil $requestUtil;
 
     /**
-     * @param array<int,mixed> $defaultHeaders
+     * @param RequestUtil $requestUtil
+     * @param array $defaultHeaders
      */
     public function __construct(
-        string $baseUri,
-        int $maxRetries = 3,
-        int $maxRetryDelay = 1000,
-        array $defaultHeaders = [],
-        ?LoggerInterface $loggerInterface = null,
+        protected RequestUtil $requestUtil,
+        protected array $defaultHeaders = [],
     ) {
-        static::$defaultHeaders = $defaultHeaders;
-        $this->requestUtil      = new RequestUtil(
-            baseUri: $baseUri,
-            maxRetries: $maxRetries,
-            maxRetryDelay: $maxRetryDelay,
-            loggerInterface: $loggerInterface
-        );
     }
 
     /**
@@ -45,49 +29,31 @@ class ApiClientBuilder
      * @param string $path
      * @param string $method
      * @param array $options
+     * @param string $routeLogName
      *
      * @return ApiClientBuilder
      */
-    public function createRoute(
+    public function setRoute(
         string $name,
         string $path,
         string $method,
-        array $options,
+        array $options = [],
+        string $routeLogName = "",
     ): self {
         static::$routes[$name] = [
-            'path'    => $path,
-            'method'  => $method,
-            'headers' => static::$defaultHeaders,
-            'options' => [
-                'form_params' => [],
-                'multipart'   => [],
-                'query'       => [],
-                'body'        => [],
-            ]
+            'path'     => $path,
+            'method'   => $method,
+            'headers'  => isset($options['headers'])
+                ? array_merge($this->defaultHeaders, $options['headers'])
+                : $this->defaultHeaders,
+            'options'  => [
+                'form_params' => $options['form_params'] ?? [],
+                'query'       => $options['query'] ?? [],
+                'body'        => $options['body'] ?? [],
+                'multipart'   => $options['multipart'] ?? [],
+            ],
+            'log_name' => $routeLogName
         ];
-
-        $routeConfig  = static::$routes[$name];
-        $routeOptions = $routeConfig['options'];
-
-        if (isset($options['headers'])) {
-            $routeConfig['headers'] = array_merge($routeConfig['headers'], $options['headers']);
-        }
-
-        if (isset($options['form_params'])) {
-            $routeOptions['form_params'] = $options['form_param'];
-        }
-
-        if (isset($options['multipart'])) {
-            $routeOptions['multipart'] = $options['multipart'];
-        }
-
-        if (isset($options['query'])) {
-            $routeOptions['query'] = $options['query'];
-        }
-
-        if (isset($options['body'])) {
-            $routeOptions['body'] = $options['body'];
-        }
 
         return $this;
     }
@@ -104,9 +70,24 @@ class ApiClientBuilder
 
         $routeConfig = static::$routes[$name];
         $method      = $routeConfig['method'];
-        $uri         = $routeConfig['method'];
+        $uri         = $routeConfig['path'];
         $options     = $routeConfig['options'];
+        $headers     = $routeConfig['headers'];
 
-        return $this->requestUtil->sendRequest($method, $uri, $options);
+        if ( ! empty($routeConfig['log_name'])) {
+            $this->requestUtil->requestLogName = $routeConfig['log_name'];
+        }
+
+        return $this->requestUtil->sendRequest($method, $uri, $headers, $options);
+    }
+
+    public function getRouteNames(): array
+    {
+        $routeNames = [];
+        foreach (static::$routes as $key => $value) {
+            $routeNames[] = $key;
+        }
+
+        return $routeNames;
     }
 }
